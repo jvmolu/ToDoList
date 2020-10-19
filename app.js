@@ -14,9 +14,16 @@ const itemSchema = mongoose.Schema({
     required: [true, "task has to has some Name"]
   }
 });
+const listSchema = mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, "Give the new list a name"]
+  },
+  tasks: [itemSchema]
+});
 
 const Item = mongoose.model("Item", itemSchema);
-
+const List = mongoose.model("List", listSchema);
 const item1 = new Item({
   name: "Buy Food"
 });
@@ -34,22 +41,10 @@ app.get('/',function(req,res){
     if(err){
       console.log(err);
     } else{
-
-      if(docs.length === 0){
-        Item.insertMany(defaultItems, function(err){
-          if(err){
-            console.log(err);
-          }
-        });
-        res.redirect('/');
-      }
-      else{
         res.render("list", {
           listHeading : day,
           tasks : docs
         });
-      }
-
     }
   });
 });
@@ -59,31 +54,86 @@ app.post('/',function(req,res){
   const newItem = new Item({
     name:  req.body.newItem
   });
-  newItem.save(function(err){
-    if(!err)
-    {
-      res.redirect('/');
-    }
-  });
+  if(req.body.submit == data.getDay())
+  {
+
+    newItem.save(function(err){
+      if(!err)
+      {
+        res.redirect('/');
+      }
+      else
+      {
+        console.log(err);
+        res.redirect('/');
+      }
+    });
+  }
+  else
+  {
+    List.findOne({name: req.body.submit}, function(err,list){
+      if(!err)
+      {
+        list.tasks.push(newItem);
+        list.save();
+        res.redirect('/' + req.body.submit);
+      }
+      else
+      {
+        console.log("ERROR: " + err);
+        res.redirect('/' + req.body.submit);
+      }
+    });
+  }
 
 });
 
 app.post('/delete', function(req,res){
-  console.log(req.body);
-  Item.findByIdAndRemove(req.body.checkbox, function(err){
-    if(!err)
-    {
-      console.log("DELETED SUCCESSFULLY");
-    }
-  });
-  res.redirect('/');
+  if(req.body.listName == data.getDay())
+  {
+    Item.findByIdAndRemove(req.body.checkbox, function(err){
+      if(!err)
+      {
+        console.log("DELETED SUCCESSFULLY");
+      }
+    });
+    res.redirect('/');
+  }
+  else
+  {
+    List.findOneAndUpdate({name: req.body.listName},{$pull: {tasks: {_id: req.body.checkbox}}},function(err,list){
+      if(!err)
+      {
+        res.redirect('/' + req.body.listName);
+      }
+    });
+  }
+
 });
 
 app.get('/:customListName', function(req,res){
-  const listHeading = req.params.customListName;
-  
-
-
+  const listHeadingZ = req.params.customListName;
+  List.findOne({name: listHeadingZ}, function(err,list){
+    if(!err)
+    {
+      if(list) // give that list to user
+      {
+        res.render("list", {
+          listHeading: list.name,
+          tasks: list.tasks
+        });
+      }
+      else // we create a new list
+      {
+          const newList = new List({
+            name: listHeadingZ,
+            tasks:  defaultItems
+          });
+          newList.save();
+          res.redirect('/' + listHeadingZ);
+      }
+    }
+  });
 });
 
 
