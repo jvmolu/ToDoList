@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const data = require(__dirname + '/data.js');
 const mongoose = require('mongoose');
+const _ = require('lodash');
+
 const app = express();
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -71,17 +73,18 @@ app.post('/',function(req,res){
   }
   else
   {
-    List.findOne({name: req.body.submit}, function(err,list){
+    const listname = _.capitalize(req.body.submit);
+    List.findOne({name: listname}, function(err,list){
       if(!err)
       {
         list.tasks.push(newItem);
         list.save();
-        res.redirect('/' + req.body.submit);
+        res.redirect('/' + listname);
       }
       else
       {
         console.log("ERROR: " + err);
-        res.redirect('/' + req.body.submit);
+        res.redirect('/' + listname);
       }
     });
   }
@@ -101,10 +104,11 @@ app.post('/delete', function(req,res){
   }
   else
   {
-    List.findOneAndUpdate({name: req.body.listName},{$pull: {tasks: {_id: req.body.checkbox}}},function(err,list){
+    const listname = _.capitalize(req.body.listName);
+    List.findOneAndUpdate({name: listname},{$pull: {tasks: {_id: req.body.checkbox}}},function(err,list){
       if(!err)
       {
-        res.redirect('/' + req.body.listName);
+        res.redirect('/' + listname);
       }
     });
   }
@@ -112,7 +116,7 @@ app.post('/delete', function(req,res){
 });
 
 app.get('/:customListName', function(req,res){
-  const listHeadingZ = req.params.customListName;
+  const listHeadingZ = _.capitalize(req.params.customListName);
   List.findOne({name: listHeadingZ}, function(err,list){
     if(!err)
     {
@@ -127,12 +131,12 @@ app.get('/:customListName', function(req,res){
       {
           const newList = new List({
             name: listHeadingZ,
-            tasks:  defaultItems
+            tasks:  []
           });
           newList.save();
           res.redirect('/' + listHeadingZ);
       }
-    }
+    ;}
   });
 });
 
